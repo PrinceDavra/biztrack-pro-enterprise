@@ -1,0 +1,8 @@
+Campaign name,Reporting starts,Amount spent (INR),Impressions,Clicks (all),Reach,Results,Results ROAS,Result ROAS indicator,Result indicator,CPC (all) (INR),"CPM (cost per 1,000 impressions) (INR)",Campaign delivery
+Prospecting - Cases,2026-05-01,5000.00,200000,3500,150000,40,3.20,actions:fb_pixel_purchase,actions:fb_pixel_purchase,1.43,25.00,active
+Retargeting - Wallet,2026-05-01,3000.00,80000,2100,60000,55,4.10,actions:fb_pixel_purchase,actions:fb_pixel_purchase,1.43,37.50,active
+Awareness - Brand,2026-05-01,2000.00,300000,1200,220000,,,,reach,1.67,6.67,active
+Prospecting - Cases,2026-06-01,6000.00,240000,4200,175000,48,2.80,actions:fb_pixel_purchase,actions:fb_pixel_purchase,1.43,25.00,active
+Retargeting - Wallet,2026-06-01,3500.00,90000,2400,66000,60,3.90,actions:fb_pixel_purchase,actions:fb_pixel_purchase,1.46,38.89,active
+Add To Cart Push,2026-06-01,1500.00,50000,900,40000,120,,,actions:add_to_cart,1.67,30.00,active
+Total,,21000.00,960000,15300,711000,323,,,,,,

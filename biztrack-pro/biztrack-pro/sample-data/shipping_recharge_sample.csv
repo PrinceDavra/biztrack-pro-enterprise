@@ -1,0 +1,7 @@
+Date,Transaction ID,Amount,Gateway,Status,Description
+01/05/2026 03:45 pm,TXN1001,"₹1,500.00",razorpay,success,Wallet recharge
+05/05/2026 11:20 am,TXN1002,"₹2,000.00",payu,success,Wallet recharge
+09/05/2026 09:00 am,TXN1003,₹500.00,manual,success,Manual credit adjustment
+12/05/2026 05:30 pm,TXN1004,"₹1,000.00",razorpay,failed,Failed recharge attempt
+02/06/2026 02:15 pm,TXN1005,"₹2,500.00",razorpay,success,Wallet recharge
+18/06/2026 07:10 pm,TXN1006,₹800.00,payu,success,Wallet recharge

@@ -1,0 +1,12 @@
+Name,Created at,Financial Status,Total,Refunded Amount,Lineitem quantity,Lineitem name,Lineitem price,Lineitem sku,Shipping City,Shipping Province Name
+#1001,2026-05-03 11:20:15 +0530,paid,897.00,0.00,1,Clear Case iPhone 15,499.00,CC-IP15,Mumbai,Maharashtra
+#1001,,,,,1,Tempered Glass iPhone 15,398.00,TG-IP15,,
+#1002,2026-05-05 09:10:00 +0530,paid,340.00,0.00,1,Leather Wallet Case,340.00,LW-001,Delhi,Delhi
+#1003,2026-05-12 18:45:30 +0530,paid,499.00,0.00,1,Clear Case iPhone 15,499.00,CC-IP15,Bengaluru,Karnataka
+#1003,,,,,1,Free Sticker Pack,0.00,FREE-STK,,
+#1004,2026-06-01 14:00:00 +0530,refunded,620.00,620.00,1,Silicone Case S24,620.00,SC-S24,Hyderabad,Telangana
+#1005,2026-06-09 10:30:00 +0530,paid,1198.00,0.00,2,Clear Case iPhone 15,499.00,CC-IP15,Mumbai,Maharashtra
+#1005,,,,,1,Tempered Glass iPhone 15,200.00,TG-IP15,,
+#1006,2026-06-20 16:15:00 +0530,partially_paid,340.00,100.00,1,Leather Wallet Case,340.00,LW-001,Pune,Maharashtra
+#1007,2026-06-28 12:05:00 +0530,paid,760.00,0.00,1,Silicone Case S24,620.00,SC-S24,Delhi,Delhi
+#1007,,,,,1,Tempered Glass S24,140.00,TG-S24,,

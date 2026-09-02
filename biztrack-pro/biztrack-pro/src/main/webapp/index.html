@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BizTrack Pro — BI Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root{
+  --sidebar:#ffffff; --sidebar-border:#e2e8f0; --main:#f8fafc; --navy:#1a3a6b; --gold:#c9a84c;
+  --green:#166534; --red:#991b1b; --ink:#0f172a;
+  --muted:#64748b; --card:#ffffff; --line:#e2e8f0; --sidebar-ink:#1e293b; --sidebar-muted:#64748b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--main);color:var(--ink);font-size:14px;line-height:1.5}
+h1,h2,h3,h4{font-family:'Syne',sans-serif;font-weight:700;letter-spacing:-.01em}
+.mono,.num{font-family:'DM Mono',monospace}
+button{font-family:inherit;cursor:pointer}
+a{color:var(--navy)}
+
+/* ---------- Auth ---------- */
+#auth{position:fixed;inset:0;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.auth-card{background:var(--card);border-radius:16px;padding:38px 34px;width:100%;max-width:400px;box-shadow:0 20px 50px rgba(0,0,0,.08);border:1px solid #e2e8f0}
+.auth-card .brand{font-family:'Syne';font-weight:800;font-size:26px;color:var(--navy)}
+.auth-card .brand span{color:var(--gold)}
+.auth-card p.sub{color:var(--muted);margin:6px 0 22px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:#334155}
+.field input,.field select,.field textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;background:#fff;color:var(--ink)}
+.field input:focus,.field select:focus,textarea:focus{outline:none;border-color:var(--navy)}
+.btn{background:var(--navy);color:#fff;border:none;padding:11px 18px;border-radius:8px;font-weight:600;font-size:14px;transition:.15s}
+.btn:hover{opacity:.92}
+.btn:active{transform:translateY(1px)}
+.btn.block{width:100%;margin-top:6px}
+.btn.gold{background:var(--gold);color:#241c00}
+.btn.green{background:var(--green);color:#fff}
+.btn.ghost{background:transparent;color:var(--navy);border:1px solid var(--navy)}
+.btn.sm{padding:7px 12px;font-size:12.5px}
+.btn.danger{background:var(--red);color:#fff}
+.auth-toggle{text-align:center;margin-top:16px;color:var(--muted);font-size:13px}
+.auth-toggle b{color:var(--navy);cursor:pointer}
+
+/* ---------- Layout ---------- */
+.app{display:none;min-height:100vh}
+.app.on{display:grid;grid-template-columns:236px 1fr}
+.sidebar{background:var(--sidebar);color:var(--sidebar-ink);padding:22px 14px;position:sticky;top:0;height:100vh;overflow-y:auto;border-right:1px solid var(--sidebar-border)}
+.sidebar .brand{font-family:'Syne';font-weight:800;font-size:21px;color:var(--navy);padding:0 8px 4px}
+.sidebar .brand span{color:var(--gold)}
+.sidebar .tag{font-size:10.5px;color:var(--sidebar-muted);padding:0 8px 18px;letter-spacing:.03em;text-transform:uppercase}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;color:var(--sidebar-muted);text-decoration:none;font-weight:500;font-size:13.5px;margin-bottom:2px;transition:.15s}
+.nav a:hover{background:#f1f5f9;color:#0f172a}
+.nav a.active{background:var(--navy);color:#ffffff}
+.nav a .ic{width:18px;text-align:center;font-size:15px}
+.nav .sep{height:1px;background:#e2e8f0;margin:10px 6px}
+.side-foot{margin-top:14px;padding:12px 8px;border-top:1px solid #e2e8f0}
+.side-foot .who{font-size:12px;color:#334155;margin-bottom:8px;word-break:break-all}
+.main{padding:26px 30px 60px;max-width:1280px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:14px}
+.topbar h1{font-size:24px}
+.topbar .crumb{color:var(--muted);font-size:12.5px;margin-top:3px}
+.hamburger{display:none;background:#f1f5f9;color:#0f172a;border:1px solid #e2e8f0;border-radius:8px;padding:8px 11px;font-size:16px}
+
+/* ---------- Cards / KPIs ---------- */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--card);border-radius:11px;padding:16px 17px;border-top:2px solid var(--navy);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.kpi.gold{border-top-color:var(--gold)} .kpi.green{border-top-color:var(--green)} .kpi.red{border-top-color:var(--red)}
+.kpi .k-label{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.kpi .k-val{font-family:'DM Mono';font-size:23px;font-weight:500;margin-top:7px}
+.kpi .k-sub{font-size:12px;margin-top:4px;color:var(--muted)}
+.k-sub.pos{color:var(--green)} .k-sub.neg{color:var(--red)}
+
+.panel{background:var(--card);border-radius:11px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05);margin-bottom:20px}
+.panel h3{font-size:15px;margin-bottom:14px}
+.panel .p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+.panel .p-head h3{margin:0}
+.grid-2{display:grid;grid-template-columns:1.35fr 1fr;gap:20px}
+.chart-wrap{position:relative;height:300px}
+.chart-wrap.sm{height:260px}
+
+/* ---------- Tables ---------- */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 10px;border-bottom:2px solid var(--line);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.num,th.num{text-align:right;font-family:'DM Mono'}
+tr:hover td{background:#faf8f4}
+tr.total td{font-weight:700;border-top:2px solid var(--line);background:#f2ede4}
+.empty{padding:34px;text-align:center;color:var(--muted)}
+
+/* ---------- Badges ---------- */
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.badge.green{background:#e2f0e9;color:var(--green)}
+.badge.amber{background:#f7eecf;color:#8a6d10}
+.badge.red{background:#f6e0dd;color:var(--red)}
+.badge.gray{background:#eee;color:#666}
+
+/* ---------- Forms inline ---------- */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
+.inline-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- Dropzone ---------- */
+.drop{border:2px dashed #cbb98e;border-radius:12px;background:#fbf7ee;padding:40px 20px;text-align:center;color:#7a6a45;transition:.15s;cursor:pointer}
+.drop.drag{background:#f4ead0;border-color:var(--gold)}
+.drop .big{font-size:30px;margin-bottom:8px}
+.drop input{display:none}
+
+/* ---------- Advisor ---------- */
+.insight-sec{margin-bottom:16px}
+.insight-sec h4{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.insight-list{list-style:none;display:flex;flex-direction:column;gap:9px}
+.insight-list li{background:#fbf9f5;border-left:3px solid var(--navy);padding:11px 14px;border-radius:0 8px 8px 0;font-size:13.5px}
+.insight-sec.flags .insight-list li{border-left-color:var(--red);background:#fbf1ef}
+.insight-sec.actions .insight-list li{border-left-color:var(--gold);background:#fbf6e9}
+.insight-sec.ads .insight-list li{border-left-color:var(--green);background:#f1f7f3}
+
+.exp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.exp-card{background:#fff;border:1px solid var(--line);border-radius:11px;padding:16px}
+.exp-card h4{font-size:14px;margin-bottom:6px}
+.exp-card p{font-size:12.5px;color:var(--muted);margin-bottom:12px;min-height:34px}
+
+.alert{padding:12px 15px;border-radius:9px;font-size:13px;margin-bottom:16px}
+.alert.warn{background:#fbf6e9;border:1px solid #e6d09a;color:#7a5f12}
+.alert.info{background:#eef3fa;border:1px solid #c4d6ef;color:#254b7a}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:13px}
+
+/* ---------- Toasts ---------- */
+#toasts{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:10px;z-index:200}
+.toast{background:#111;color:#fff;padding:12px 16px;border-radius:9px;font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.3);border-left:3px solid var(--navy);min-width:220px;animation:slideIn .2s ease}
+.toast.success{border-left-color:var(--green)} .toast.error{border-left-color:var(--red)} .toast.warn{border-left-color:var(--gold)}
+@keyframes slideIn{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+@media(max-width:900px){
+  .app.on{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:0;top:0;z-index:60;width:236px;transform:translateX(-100%);transition:.2s}
+  .sidebar.open{transform:translateX(0)}
+  .hamburger{display:inline-block}
+  .grid-2{grid-template-columns:1fr}
+  .main{padding:18px 16px 50px}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH ============ -->
+<div id="auth">
+  <div class="auth-card">
+    <div class="brand">Biz<span>Track</span> Pro</div>
+    <p class="sub">Business intelligence for D2C brands</p>
+
+    <div id="loginForm">
+      <div class="field"><label>Email</label><input id="li-email" type="email" placeholder="you@brand.com" autocomplete="username"></div>
+      <div class="field"><label>Password</label><input id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn block" onclick="doLogin()">Sign in</button>
+      <div class="auth-toggle">New here? <b onclick="showRegister()">Create an account</b></div>
+    </div>
+
+    <div id="registerForm" class="hidden">
+      <div class="field"><label>Business name</label><input id="rg-name" placeholder="Acme Cases"></div>
+      <div class="field"><label>Email</label><input id="rg-email" type="email" placeholder="you@brand.com"></div>
+      <div class="field"><label>Password</label><input id="rg-pass" type="password" placeholder="min 6 characters"></div>
+      <button class="btn block green" onclick="doRegister()">Create account</button>
+      <div class="auth-toggle">Already have an account? <b onclick="showLogin()">Sign in</b></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">Biz<span>Track</span> Pro</div>
+    <div class="tag">D2C Intelligence</div>
+    <nav class="nav" id="nav">
+      <a data-page="dashboard" class="active"><span class="ic">▊</span> Dashboard</a>
+      <a data-page="cities"><span class="ic">◈</span> City Analytics</a>
+      <a data-page="advisor"><span class="ic">✦</span> AI Advisor</a>
+      <div class="sep"></div>
+      <a data-page="shopify"><span class="ic">↧</span> Shopify Import</a>
+      <a data-page="meta"><span class="ic">↧</span> Meta Ads Import</a>
+      <div class="sep"></div>
+      <a data-page="sales"><span class="ic">₹</span> Sales</a>
+      <a data-page="expenses"><span class="ic">▤</span> Expenses</a>
+      <a data-page="ads"><span class="ic">◧</span> Ads</a>
+      <a data-page="pnl"><span class="ic">Σ</span> P&amp;L</a>
+      <a data-page="costs"><span class="ic">⚙</span> Product Costs</a>
+      <div class="sep"></div>
+      <a data-page="sheets"><span class="ic">⤓</span> Google Sheets</a>
+      <a data-page="ca"><span class="ic">🖹</span> CA Export</a>
+    </nav>
+    <div class="side-foot">
+      <div class="who" id="whoami"></div>
+      <button class="btn ghost sm" style="width:100%;color:#ddd;border-color:#333" onclick="logout()">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <div>
+          <h1 id="pageTitle">Dashboard</h1>
+          <div class="crumb" id="pageCrumb">Overview of revenue, profit and expenses</div>
+        </div>
+      </div>
+      <button class="btn sm ghost" onclick="reloadCurrent()">↻ Refresh</button>
+    </div>
+
+    <!-- 1. DASHBOARD -->
+    <section id="page-dashboard" class="page">
+      <div class="kpis" id="dashKpis"></div>
+      <div class="grid-2">
+        <div class="panel"><h3>Revenue vs Profit (by month)</h3><div class="chart-wrap"><canvas id="chRevProfit"></canvas></div></div>
+        <div class="panel"><h3>Expense Breakdown</h3><div class="chart-wrap"><canvas id="chExpense"></canvas></div></div>
+      </div>
+      <div class="panel">
+        <div class="p-head"><h3>Recent Orders</h3><a data-page="sales" class="btn sm ghost navlink">View all</a></div>
+        <div class="tbl-wrap"><table id="tblRecent"><thead><tr>
+          <th>Date</th><th>Order</th><th>Product</th><th class="num">Qty</th><th class="num">Revenue</th><th class="num">Profit</th><th>Status</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 2. CITY ANALYTICS -->
+    <section id="page-cities" class="page hidden">
+      <div class="kpis" id="cityKpis"></div>
+      <div class="panel">
+        <div class="p-head"><h3>Cities</h3>
+          <div class="inline-actions">
+            <label class="muted" style="font-size:12px;align-self:center">Sort:</label>
+            <select id="citySort" onchange="loadCities()" style="padding:7px 10px;border:1px solid var(--line);border-radius:7px">
+              <option value="revenue">Revenue</option><option value="orders">Orders</option><option value="aov">AOV</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="chart-wrap"><canvas id="chCityBar"></canvas></div>
+          <div class="chart-wrap"><canvas id="chCityDough"></canvas></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Top 10 Cities</h3>
+        <div class="tbl-wrap"><table id="tblCities"><thead><tr>
+          <th>#</th><th>City</th><th>State</th><th class="num">Revenue</th><th class="num">Orders</th><th class="num">Units</th><th class="num">AOV</th><th class="num">Share</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 3. AI ADVISOR -->
+    <section id="page-advisor" class="page hidden">
+      <div class="panel">
+        <div class="p-head"><h3>Rule-based Advisor</h3><button class="btn gold" onclick="runAdvisor()">✦ Analyse my business</button></div>
+        <p class="muted">A local, rules-driven analysis of your revenue, margins, cities and ad performance. No data leaves your server.</p>
+      </div>
+      <div id="advisorSummary" class="kpis hidden"></div>
+      <div id="advisorOut" class="grid-2"></div>
+    </section>
+
+    <!-- 4. SHOPIFY IMPORT -->
+    <section id="page-shopify" class="page hidden">
+      <div class="panel">
+        <h3>Import Shopify Orders</h3>
+        <p class="muted" style="margin-bottom:14px">Upload the "Orders" CSV export (Plain CSV) from Shopify. Line items are grouped by order; the Total column is read once per order.</p>
+        <div class="drop" id="drop-shopify" onclick="fileInput('shopify')">
+          <div class="big">↧</div><div><b>Drop CSV here</b> or click to browse</div>
+          <div class="muted" style="font-size:12px;margin-top:6px">Max 10MB · .csv only</div>
+          <input type="file" accept=".csv" id="fi-shopify">
+        </div>
+        <div id="prev-shopify"></div>
+      </div>
+    </section>
+
+    <!-- 5. META ADS IMPORT -->
+    <section id="page-meta" class="page hidden">
+      <div class="panel">
+        <h3>Import Meta Ads</h3>
+        <p class="muted" style="margin-bottom:14px">Upload the Ads Manager CSV export. Revenue is attributed only when the result is a pixel purchase and a ROAS value is present.</p>
+        <div class="drop" id="drop-meta" onclick="fileInput('meta')">
+          <div class="big">↧</div><div><b>Drop CSV here</b> or click to browse</div>
+          <div class="muted" style="font-size:12px;margin-top:6px">Max 10MB · .csv only</div>
+          <input type="file" accept=".csv" id="fi-meta">
+        </div>
+        <div id="prev-meta"></div>
+      </div>
+    </section>
+
+    <!-- 6. SALES -->
+    <section id="page-sales" class="page hidden">
+      <div class="panel">
+        <h3>Add a Sale</h3>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field"><label>Order ID</label><input id="s-order" placeholder="auto if blank"></div>
+          <div class="field"><label>Date</label><input id="s-date" type="date"></div>
+          <div class="field"><label>Product</label><input id="s-product" placeholder="Product name"></div>
+          <div class="field"><label>SKU</label><input id="s-sku" placeholder="SKU"></div>
+          <div class="field"><label>Qty</label><input id="s-qty" type="number" value="1" min="1"></div>
+          <div class="field"><label>Unit Price ₹</label><input id="s-price" type="number" step="0.01"></div>
+          <div class="field"><label>COGS/unit ₹</label><input id="s-cogs" type="number" step="0.01"></div>
+          <div class="field"><label>Refund ₹</label><input id="s-refund" type="number" step="0.01" value="0"></div>
+          <div class="field"><label>City</label><input id="s-city" placeholder="City"></div>
+          <div class="field"><label>State</label><input id="s-state" placeholder="State"></div>
+          <div class="field"><button class="btn green block" onclick="addSale()">+ Add sale</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Orders</h3>
+        <div class="tbl-wrap"><table id="tblSales"><thead><tr>
+          <th>Date</th><th>Order</th><th>Product</th><th class="num">Qty</th><th class="num">Unit ₹</th><th class="num">Revenue</th><th class="num">COGS/u</th><th class="num">Profit</th><th>City</th><th>Status</th><th></th>
+        </tr></thead><tbody></tbody></table></div>
+        <div class="pager" id="pgSales"></div>
+      </div>
+    </section>
+
+    <!-- 7. EXPENSES -->
+    <section id="page-expenses" class="page hidden">
+      <div class="panel">
+        <h3>Import Shipping Recharge Log</h3>
+        <p class="muted" style="margin-bottom:12px">Only "success" rows are kept; manual-gateway credits are skipped. Category is set to Shipping.</p>
+        <div class="drop" id="drop-shipping" onclick="fileInput('shipping')">
+          <div class="big">↧</div><div><b>Drop shipping CSV</b> or click to browse</div>
+          <input type="file" accept=".csv" id="fi-shipping">
+        </div>
+        <div id="prev-shipping"></div>
+      </div>
+      <div class="panel">
+        <h3>Add an Expense</h3>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field"><label>Date</label><input id="e-date" type="date"></div>
+          <div class="field"><label>Description</label><input id="e-desc" placeholder="e.g. Packaging"></div>
+          <div class="field"><label>Amount ₹</label><input id="e-amt" type="number" step="0.01"></div>
+          <div class="field"><label>Category</label><input id="e-cat" placeholder="e.g. Marketing"></div>
+          <div class="field"><label>Payment method</label><input id="e-pm" placeholder="UPI / Card"></div>
+          <div class="field"><button class="btn green block" onclick="addExpense()">+ Add expense</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Expenses</h3>
+        <div class="tbl-wrap"><table id="tblExpenses"><thead><tr>
+          <th>Date</th><th>Description</th><th>Category</th><th class="num">Amount</th><th>Method</th><th>Source</th><th></th>
+        </tr></thead><tbody></tbody></table></div>
+        <div class="pager" id="pgExpenses"></div>
+      </div>
+    </section>
+
+    <!-- 8. ADS -->
+    <section id="page-ads" class="page hidden">
+      <div class="panel">
+        <h3>Add a Campaign</h3>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field"><label>Date</label><input id="a-date" type="date"></div>
+          <div class="field"><label>Campaign</label><input id="a-name" placeholder="Campaign name"></div>
+          <div class="field"><label>Platform</label><input id="a-plat" placeholder="Meta" value="Meta"></div>
+          <div class="field"><label>Spend ₹</label><input id="a-spend" type="number" step="0.01"></div>
+          <div class="field"><label>ROAS</label><input id="a-roas" type="number" step="0.01" placeholder="optional"></div>
+          <div class="field"><label>Clicks</label><input id="a-clicks" type="number"></div>
+          <div class="field"><label>Conversions</label><input id="a-conv" type="number"></div>
+          <div class="field"><button class="btn green block" onclick="addAd()">+ Add campaign</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Campaign Log</h3>
+        <div class="tbl-wrap"><table id="tblAds"><thead><tr>
+          <th>Date</th><th>Campaign</th><th>Platform</th><th class="num">Spend</th><th class="num">Revenue</th><th>ROAS</th><th class="num">Clicks</th><th class="num">Conv.</th><th>Delivery</th><th></th>
+        </tr></thead><tbody></tbody></table></div>
+        <div class="pager" id="pgAds"></div>
+      </div>
+    </section>
+
+    <!-- 9. P&L -->
+    <section id="page-pnl" class="page hidden">
+      <div class="kpis" id="pnlKpis"></div>
+      <div class="panel">
+        <h3>Monthly Profit &amp; Loss</h3>
+        <div class="tbl-wrap"><table id="tblPnl"><thead><tr>
+          <th>Month</th><th class="num">Revenue</th><th class="num">COGS</th><th class="num">Gross Profit</th><th class="num">Ad Spend</th><th class="num">Other Exp.</th><th class="num">Net Profit</th><th class="num">Margin</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 10. PRODUCT COSTS -->
+    <section id="page-costs" class="page hidden">
+      <div id="cogsAlert"></div>
+      <div class="panel">
+        <div class="p-head"><h3>Import Cost Sheet</h3><button class="btn ghost sm" onclick="downloadTemplate()">⤓ Download template</button></div>
+        <p class="muted" style="margin-bottom:12px">Columns are auto-detected (product/name/item · sku/code · cost/price/cogs/rate). Costs are applied to all orders after import.</p>
+        <div class="drop" id="drop-costs" onclick="fileInput('costs')">
+          <div class="big">↧</div><div><b>Drop cost CSV</b> or click to browse</div>
+          <input type="file" accept=".csv" id="fi-costs">
+        </div>
+        <div id="prev-costs"></div>
+      </div>
+      <div class="panel">
+        <h3>Add a Product Cost</h3>
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field"><label>Product name</label><input id="c-name" placeholder="Product"></div>
+          <div class="field"><label>SKU</label><input id="c-sku" placeholder="SKU"></div>
+          <div class="field"><label>Cost ₹</label><input id="c-cost" type="number" step="0.01"></div>
+          <div class="field"><label>Notes</label><input id="c-notes" placeholder="optional"></div>
+          <div class="field"><button class="btn green block" onclick="addCost()">+ Save cost</button></div>
+        </div>
+        <div class="inline-actions" style="margin-top:12px"><button class="btn sm" onclick="applyCosts()">⚙ Apply all costs to orders</button></div>
+      </div>
+      <div class="panel">
+        <h3>Cost Catalogue</h3>
+        <div class="tbl-wrap"><table id="tblCosts"><thead><tr>
+          <th>Product</th><th>SKU</th><th class="num">Cost ₹</th><th>Notes</th><th></th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 11. GOOGLE SHEETS -->
+    <section id="page-sheets" class="page hidden">
+      <div class="alert info">Download any report as a CSV, then use <b>File → Import</b> in Google Sheets to bring it in. All files are Excel/Sheets-ready (UTF-8 with BOM).</div>
+      <div class="panel">
+        <h3>Export Reports</h3>
+        <div class="exp-grid" style="margin-top:6px">
+          <div class="exp-card"><h4>P&amp;L Statement</h4><p>Monthly Jan–Dec profit &amp; loss with totals.</p><button class="btn block" onclick="dl('/export/pnl')">⤓ Download</button></div>
+          <div class="exp-card"><h4>Sales Ledger</h4><p>Every order with COGS, gross profit &amp; net revenue.</p><button class="btn block" onclick="dl('/export/sales')">⤓ Download</button></div>
+          <div class="exp-card"><h4>Expense Ledger</h4><p>Operating expenses plus ad campaigns.</p><button class="btn block" onclick="dl('/export/expenses')">⤓ Download</button></div>
+          <div class="exp-card"><h4>Ad Report</h4><p>Spend, attributed revenue, ROAS, CPC, CPL.</p><button class="btn block" onclick="dl('/export/ads')">⤓ Download</button></div>
+          <div class="exp-card"><h4>Complete Books</h4><p>All four reports combined in one file.</p><button class="btn block" onclick="dl('/export/full')">⤓ Download</button></div>
+          <div class="exp-card"><h4>Summary Report</h4><p>Overview + top products &amp; cities.</p><button class="btn block" onclick="dl('/export/summary')">⤓ Download</button></div>
+          <div class="exp-card"><h4>Full Backup</h4><p>Raw dump of every table for safekeeping.</p><button class="btn block gold" onclick="dl('/export/backup')">⤓ Download</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12. CA EXPORT -->
+    <section id="page-ca" class="page hidden">
+      <div class="panel">
+        <h3>Business Profile</h3>
+        <p class="muted" style="margin-bottom:12px">These details appear in the header of every exported report.</p>
+        <div class="form-grid">
+          <div class="field"><label>Business name</label><input id="p-name" placeholder="Acme Cases Pvt Ltd"></div>
+          <div class="field"><label>GSTIN</label><input id="p-gstin" placeholder="22AAAAA0000A1Z5"></div>
+          <div class="field"><label>Financial year</label><input id="p-fy" placeholder="2026-27"></div>
+          <div class="field"><label>CA name</label><input id="p-ca" placeholder="Your CA"></div>
+          <div class="field"><button class="btn block" onclick="saveProfile()">Save profile</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>CA-Ready Exports</h3>
+        <div class="exp-grid" style="margin-top:6px">
+          <div class="exp-card"><h4>P&amp;L Statement</h4><p>Month-wise P&amp;L for the financial year.</p><button class="btn block" onclick="dl('/export/pnl')">⤓ Download CSV</button></div>
+          <div class="exp-card"><h4>Sales Ledger</h4><p>Full order ledger with totals row.</p><button class="btn block" onclick="dl('/export/sales')">⤓ Download CSV</button></div>
+          <div class="exp-card"><h4>Expense Ledger</h4><p>Expenses + advertising, totalled.</p><button class="btn block" onclick="dl('/export/expenses')">⤓ Download CSV</button></div>
+          <div class="exp-card"><h4>Ad Report</h4><p>Campaign-level ad performance.</p><button class="btn block" onclick="dl('/export/ads')">⤓ Download CSV</button></div>
+          <div class="exp-card"><h4>Complete Books</h4><p>Everything in one CA-ready file.</p><button class="btn block green" onclick="dl('/export/full')">⤓ Download CSV</button></div>
+          <div class="exp-card"><h4>Summary Report</h4><p>One-page business overview.</p><button class="btn block" onclick="dl('/export/summary')">⤓ Download CSV</button></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+// ============================================================
+//  BizTrack Pro — frontend
+// ============================================================
+const API = '/api';
+const TOKEN_KEY = 'biztrack_token';
+const USER_KEY  = 'biztrack_user';
+let CURRENT = 'dashboard';
+const charts = {};
+
+const state = { salesPage:1, expPage:1, adsPage:1 };
+
+// ---------- helpers ----------
+function token(){ return sessionStorage.getItem(TOKEN_KEY); }
+function setAuth(d){ sessionStorage.setItem(TOKEN_KEY, d.token); sessionStorage.setItem(USER_KEY, JSON.stringify({name:d.name,email:d.email})); }
+function user(){ try{ return JSON.parse(sessionStorage.getItem(USER_KEY))||{}; }catch(e){ return {}; } }
+
+function inr(v, dp=0){
+  const n = Number(v||0);
+  return '₹' + n.toLocaleString('en-IN', {minimumFractionDigits:dp, maximumFractionDigits:dp});
+}
+function num(v){ return Number(v||0).toLocaleString('en-IN'); }
+function pct(v){ return (Number(v||0)).toFixed(2) + '%'; }
+function fdate(iso){ if(!iso) return ''; const p=String(iso).slice(0,10).split('-'); return p.length===3? p[2]+'/'+p[1]+'/'+p[0] : iso; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function toast(msg, type='success'){
+  const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='.3s'; setTimeout(()=>t.remove(),300); }, 3200);
+}
+
+async function api(path, opts={}){
+  const headers = opts.headers || {};
+  if(token()) headers['Authorization'] = 'Bearer ' + token();
+  if(opts.body && !(opts.body instanceof FormData)){ headers['Content-Type']='application/json'; }
+  let res;
+  try{ res = await fetch(API+path, {...opts, headers}); }
+  catch(e){ toast('Network error — is the server running?', 'error'); throw e; }
+  if(res.status===401){ toast('Session expired, please sign in', 'error'); logout(); throw new Error('401'); }
+  let json; try{ json = await res.json(); }catch(e){ json = {status:'error', message:'Bad response'}; }
+  if(!res.ok || json.status==='error'){ const m=json.message||('Request failed ('+res.status+')'); toast(m,'error'); throw new Error(m); }
+  return json.data;
+}
+
+async function upload(path, file){
+  const fd = new FormData(); fd.append('file', file);
+  return api(path, {method:'POST', body:fd});
+}
+
+async function dl(path){
+  try{
+    toast('Preparing download…','warn');
+    const res = await fetch(API+path, {headers:{'Authorization':'Bearer '+token()}});
+    if(!res.ok){ toast('Export failed','error'); return; }
+    const cd = res.headers.get('Content-Disposition')||'';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    const name = m? m[1] : 'export.csv';
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('Downloaded '+name,'success');
+  }catch(e){ toast('Export failed','error'); }
+}
+
+// ---------- auth ----------
+function showRegister(){ document.getElementById('loginForm').classList.add('hidden'); document.getElementById('registerForm').classList.remove('hidden'); }
+function showLogin(){ document.getElementById('registerForm').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); }
+
+async function doLogin(){
+  const email=document.getElementById('li-email').value.trim();
+  const password=document.getElementById('li-pass').value;
+  if(!email||!password){ toast('Enter email and password','warn'); return; }
+  try{ const d=await api('/auth/login',{method:'POST',body:JSON.stringify({email,password})}); setAuth(d); enterApp(); toast('Welcome back, '+(d.name||'')); }
+  catch(e){}
+}
+async function doRegister(){
+  const name=document.getElementById('rg-name').value.trim();
+  const email=document.getElementById('rg-email').value.trim();
+  const password=document.getElementById('rg-pass').value;
+  if(!email||!password){ toast('Email and password required','warn'); return; }
+  try{ const d=await api('/auth/register',{method:'POST',body:JSON.stringify({name,email,password})}); setAuth(d); enterApp(); toast('Account created 🎉'); }
+  catch(e){}
+}
+function logout(){ sessionStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(USER_KEY); document.getElementById('app').classList.remove('on'); document.getElementById('auth').style.display='flex'; }
+
+function enterApp(){
+  document.getElementById('auth').style.display='none';
+  document.getElementById('app').classList.add('on');
+  const u=user(); document.getElementById('whoami').textContent=(u.name?u.name+' · ':'')+(u.email||'');
+  go('dashboard');
+}
+
+// ---------- navigation ----------
+function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); }
+const TITLES={
+  dashboard:['Dashboard','Overview of revenue, profit and expenses'],
+  cities:['City Analytics','Where your revenue comes from'],
+  advisor:['AI Advisor','Rule-based insights for your business'],
+  shopify:['Shopify Import','Bring in your Shopify orders'],
+  meta:['Meta Ads Import','Bring in your Meta ad performance'],
+  sales:['Sales','Every order in one ledger'],
+  expenses:['Expenses','Operating costs & shipping'],
+  ads:['Ads','Campaign performance log'],
+  pnl:['Profit & Loss','Month-by-month P&L'],
+  costs:['Product Costs','COGS catalogue & matching'],
+  sheets:['Google Sheets','Export data as CSV'],
+  ca:['CA Export','Accountant-ready reports']
+};
+function go(page){
+  CURRENT=page;
+  document.querySelectorAll('.page').forEach(p=>p.classList.add('hidden'));
+  const el=document.getElementById('page-'+page); if(el) el.classList.remove('hidden');
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active', a.dataset.page===page));
+  const t=TITLES[page]||[page,'']; document.getElementById('pageTitle').textContent=t[0]; document.getElementById('pageCrumb').textContent=t[1];
+  if(window.innerWidth<=900) document.getElementById('sidebar').classList.remove('open');
+  loadPage(page);
+}
+function reloadCurrent(){ loadPage(CURRENT); }
+function loadPage(page){
+  try{
+    if(page==='dashboard') loadDashboard();
+    else if(page==='cities') loadCities();
+    else if(page==='sales') loadSales();
+    else if(page==='expenses') loadExpenses();
+    else if(page==='ads') loadAds();
+    else if(page==='pnl') loadPnl();
+    else if(page==='costs') loadCosts();
+    else if(page==='ca') loadProfile();
+  }catch(e){ console.error(e); }
+}
+
+// ---------- KPI card helper ----------
+function kpi(label,val,sub,cls,subcls){
+  return `<div class="kpi ${cls||''}"><div class="k-label">${label}</div><div class="k-val">${val}</div>${sub?`<div class="k-sub ${subcls||''}">${sub}</div>`:''}</div>`;
+}
+
+// ---------- 1. DASHBOARD ----------
+async function loadDashboard(){
+  const [k, monthly, breakdown, recent] = await Promise.all([
+    api('/dashboard/kpis'), api('/dashboard/monthly'), api('/dashboard/expenses/breakdown'), api('/sales?size=8&page=1')
+  ]);
+  document.getElementById('dashKpis').innerHTML =
+    kpi('Total Revenue', inr(k.totalRevenue), num(k.totalOrders)+' orders','')+
+    kpi('Net Profit', inr(k.netProfit), pct(k.netMargin)+' margin', Number(k.netProfit)>=0?'green':'red', Number(k.netProfit)>=0?'pos':'neg')+
+    kpi('Total Expenses', inr(k.totalExpenses), 'COGS + OpEx + Ads','red')+
+    kpi('Ad Spend', inr(k.adSpend), 'ROAS '+Number(k.roas).toFixed(2)+'x','gold')+
+    kpi('ROAS', Number(k.roas).toFixed(2)+'x', inr(k.adRevenue)+' attributed','gold')+
+    kpi('Units Sold', num(k.unitsSold), inr(k.aov)+' AOV','');
+
+  // Revenue vs Profit
+  drawBar('chRevProfit', monthly.map(m=>m.label), [
+    {label:'Revenue', data:monthly.map(m=>Number(m.revenue)), backgroundColor:'#1a3a6b'},
+    {label:'Profit', data:monthly.map(m=>Number(m.profit)), backgroundColor:monthly.map(m=>Number(m.profit)>=0?'#1a6b45':'#c0392b')}
+  ]);
+  // Expense pie
+  drawPie('chExpense', breakdown.map(b=>b.label), breakdown.map(b=>Number(b.amount)));
+
+  const tb=document.querySelector('#tblRecent tbody');
+  const items=recent.items||[];
+  tb.innerHTML = items.length? items.map(o=>`<tr>
+    <td>${fdate(o.date)}</td><td>${esc(o.orderId)}</td><td>${esc(o.product)}</td>
+    <td class="num">${num(o.qty)}</td><td class="num">${inr(o.revenue)}</td>
+    <td class="num" style="color:${Number(o.profit)>=0?'var(--green)':'var(--red)'}">${inr(o.profit)}</td>
+    <td>${statusBadge(o.status)}</td></tr>`).join('') : emptyRow(7);
+}
+
+function statusBadge(s){
+  const t=(s||'').toLowerCase();
+  if(t.includes('refund')) return `<span class="badge red">${esc(s)}</span>`;
+  if(t.includes('pend')||t.includes('partial')) return `<span class="badge amber">${esc(s)}</span>`;
+  if(t.includes('paid')||t.includes('success')) return `<span class="badge green">${esc(s)}</span>`;
+  return `<span class="badge gray">${esc(s||'—')}</span>`;
+}
+function roasBadge(v){
+  const r=Number(v||0); const cls = r>=3?'green': r>=1?'amber':'red';
+  return `<span class="badge ${cls}">${r.toFixed(2)}x</span>`;
+}
+function emptyRow(cols){ return `<tr><td colspan="${cols}" class="empty">No data yet</td></tr>`; }
+
+// ---------- charts ----------
+function destroy(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+function drawBar(id, labels, datasets){
+  destroy(id);
+  charts[id]=new Chart(document.getElementById(id),{type:'bar',
+    data:{labels,datasets:datasets.map(d=>({...d,borderRadius:4,maxBarThickness:46}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},
+      tooltip:{callbacks:{label:c=>c.dataset.label+': ₹'+Number(c.raw).toLocaleString('en-IN')}}},
+      scales:{y:{ticks:{callback:v=>'₹'+Number(v).toLocaleString('en-IN')}}}}});
+}
+const PALETTE=['#1a3a6b','#c9a84c','#1a6b45','#c0392b','#5b7fb0','#8a6d10','#3d8f68','#a05a4f','#2c2c2c','#7a8ba0'];
+function drawPie(id, labels, data){
+  destroy(id);
+  charts[id]=new Chart(document.getElementById(id),{type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right'},
+      tooltip:{callbacks:{label:c=>c.label+': ₹'+Number(c.raw).toLocaleString('en-IN')}}}}});
+}
+
+// ---------- 2. CITIES ----------
+async function loadCities(){
+  const sort=document.getElementById('citySort').value;
+  const cities=await api('/analytics/cities?sort='+sort);
+  const totalRev=cities.reduce((s,c)=>s+Number(c.revenue),0);
+  const totalOrd=cities.reduce((s,c)=>s+Number(c.orders),0);
+  const top=cities[0];
+  let bestAov=cities[0]; cities.forEach(c=>{ if(bestAov&&Number(c.aov)>Number(bestAov.aov)) bestAov=c; });
+  document.getElementById('cityKpis').innerHTML =
+    kpi('Cities', num(cities.length), 'with orders','')+
+    kpi('Top City', top?esc(top.city):'—', top?inr(top.revenue):'', 'gold')+
+    kpi('Highest AOV', bestAov?esc(bestAov.city):'—', bestAov?inr(bestAov.aov):'', 'green')+
+    kpi('Total Orders', num(totalOrd), inr(totalRev)+' revenue','');
+
+  const top10=cities.slice(0,10);
+  drawBar('chCityBar', top10.map(c=>c.city), [{
+    label: sort==='orders'?'Orders':sort==='aov'?'AOV':'Revenue',
+    data: top10.map(c=> sort==='orders'?Number(c.orders): sort==='aov'?Number(c.aov):Number(c.revenue)),
+    backgroundColor:'#1a3a6b'
+  }]);
+
+  // doughnut: top 8 + Others
+  const top8=cities.slice(0,8); const rest=cities.slice(8);
+  const labels=top8.map(c=>c.city); const data=top8.map(c=>Number(c.revenue));
+  if(rest.length){ labels.push('Others'); data.push(rest.reduce((s,c)=>s+Number(c.revenue),0)); }
+  drawPie('chCityDough', labels, data);
+
+  const tb=document.querySelector('#tblCities tbody');
+  tb.innerHTML = top10.length? top10.map((c,i)=>`<tr>
+    <td>${i+1}</td><td>${esc(c.city)}</td><td>${esc(c.province||'—')}</td>
+    <td class="num">${inr(c.revenue)}</td><td class="num">${num(c.orders)}</td><td class="num">${num(c.units)}</td>
+    <td class="num">${inr(c.aov)}</td><td class="num">${pct(c.share)}</td></tr>`).join('') : emptyRow(8);
+}
+
+// ---------- 3. ADVISOR ----------
+async function runAdvisor(){
+  try{
+    const r=await api('/advisor/analyse');
+    const s=r.summary||{};
+    const sumEl=document.getElementById('advisorSummary');
+    sumEl.classList.remove('hidden');
+    sumEl.innerHTML =
+      kpi('Revenue', inr(s.totalRevenue),'','')+
+      kpi('Net Profit', inr(s.netProfit), pct(s.netMargin), Number(s.netProfit)>=0?'green':'red')+
+      kpi('AOV', inr(s.aov), num(s.totalOrders)+' orders','')+
+      kpi('ROAS', Number(s.roas).toFixed(2)+'x', inr(s.adSpend)+' spend','gold');
+    const sec=(title,items,cls,icon)=>`<div class="panel insight-sec ${cls}"><h4>${icon} ${title}</h4><ul class="insight-list">${(items&&items.length?items:['—']).map(i=>`<li>${esc(i)}</li>`).join('')}</ul></div>`;
+    document.getElementById('advisorOut').innerHTML =
+      `<div>${sec('Key Insights', r.keyInsights,'insights','✦')}${sec('Action Items', r.actionItems,'actions','➜')}${sec('Red Flags', r.redFlags,'flags','⚠')}</div>`+
+      `<div>${sec('City Opportunity', r.cityOpportunity,'city','◈')}${sec('Ad Strategy', r.adStrategy,'ads','◧')}</div>`;
+    toast('Analysis ready');
+  }catch(e){}
+}
+
+// ---------- 4/5/7/10. IMPORTS ----------
+const IMPORTS={
+  shopify:{path:'/import/shopify', prev:'prev-shopify', after:()=>go('dashboard')},
+  meta:{path:'/import/meta', prev:'prev-meta', meta:true},
+  shipping:{path:'/import/shipping', prev:'prev-shipping', after:loadExpenses},
+  costs:{path:'/import/costs', prev:'prev-costs', after:loadCosts}
+};
+function fileInput(kind){ document.getElementById('fi-'+kind).click(); }
+
+function wireDrop(kind){
+  const zone=document.getElementById('drop-'+kind); const input=document.getElementById('fi-'+kind);
+  if(!zone||!input) return;
+  input.addEventListener('change', e=>{ if(e.target.files[0]) handleFile(kind, e.target.files[0]); });
+  ['dragover','dragenter'].forEach(ev=>zone.addEventListener(ev, e=>{e.preventDefault();zone.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>zone.addEventListener(ev, e=>{e.preventDefault();zone.classList.remove('drag');}));
+  zone.addEventListener('drop', e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(kind,f); });
+}
+function handleFile(kind, file){
+  if(!file.name.toLowerCase().endsWith('.csv')){ toast('Please choose a .csv file','warn'); return; }
+  if(file.size>10*1024*1024){ toast('File exceeds 10MB','error'); return; }
+  const cfg=IMPORTS[kind];
+  Papa.parse(file,{header:true,skipEmptyLines:true,preview:12,complete:res=>{
+    renderPreview(cfg.prev, res.meta.fields||[], res.data, kind, file);
+  }});
+}
+function renderPreview(elId, fields, rows, kind, file){
+  const cfg=IMPORTS[kind];
+  const cols=fields.slice(0,7);
+  let html=`<div class="alert info" style="margin-top:16px">Previewing first ${rows.length} row(s) of <b>${esc(file.name)}</b>. Review, then confirm.</div>`;
+  html+='<div class="tbl-wrap"><table><thead><tr>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+ (cfg.meta?'<th>ROAS</th>':'') +'</tr></thead><tbody>';
+  html+=rows.map(r=>'<tr>'+cols.map(c=>`<td>${esc((r[c]||'').slice(0,26))}</td>`).join('')+ (cfg.meta?`<td>${r['Results ROAS']?roasBadge(r['Results ROAS']):'<span class="badge gray">n/a</span>'}</td>`:'') +'</tr>').join('');
+  html+='</tbody></table></div>';
+  html+=`<div class="inline-actions" style="margin-top:14px"><button class="btn green" onclick="confirmImport('${kind}')">✓ Confirm import</button><button class="btn ghost" onclick="document.getElementById('${elId}').innerHTML=''">Cancel</button></div>`;
+  document.getElementById(elId).innerHTML=html;
+  PENDING[kind]=file;
+}
+const PENDING={};
+async function confirmImport(kind){
+  const cfg=IMPORTS[kind]; const file=PENDING[kind];
+  if(!file){ toast('No file selected','warn'); return; }
+  try{
+    const r=await upload(cfg.path, file);
+    let msg='Imported '+ (r.imported||0);
+    if(r.duplicates) msg+=', '+r.duplicates+' dup';
+    if(r.updated) msg+=', '+r.updated+' updated';
+    if(r.costsApplied) msg+=', applied to '+r.costsApplied+' orders';
+    toast(msg,'success');
+    document.getElementById(cfg.prev).innerHTML=''; delete PENDING[kind];
+    if(cfg.after) cfg.after();
+  }catch(e){}
+}
+
+// ---------- 6. SALES ----------
+async function loadSales(){
+  const p=state.salesPage;
+  const data=await api('/sales?page='+p+'&size=25');
+  const tb=document.querySelector('#tblSales tbody');
+  const items=data.items||[];
+  tb.innerHTML = items.length? items.map(o=>`<tr>
+    <td>${fdate(o.date)}</td><td>${esc(o.orderId)}</td><td>${esc(o.product)}</td>
+    <td class="num">${num(o.qty)}</td><td class="num">${inr(o.unitPrice)}</td><td class="num">${inr(o.revenue)}</td>
+    <td class="num">${inr(o.cogsPerUnit)}</td><td class="num" style="color:${Number(o.profit)>=0?'var(--green)':'var(--red)'}">${inr(o.profit)}</td>
+    <td>${esc(o.shippingCity||'—')}</td><td>${statusBadge(o.status)}</td>
+    <td><button class="btn danger sm" onclick="delSale(${o.id})">✕</button></td></tr>`).join('') : emptyRow(11);
+  pager('pgSales', data, n=>{ state.salesPage=n; loadSales(); });
+}
+async function addSale(){
+  const body={
+    orderId:val('s-order'), date:val('s-date'), product:val('s-product'), sku:val('s-sku'),
+    qty:numval('s-qty'), unitPrice:numval('s-price'), cogsPerUnit:numval('s-cogs'), refund:numval('s-refund'),
+    shippingCity:val('s-city'), shippingProvince:val('s-state')
+  };
+  if(!body.product){ toast('Product is required','warn'); return; }
+  try{ await api('/sales',{method:'POST',body:JSON.stringify(body)}); toast('Sale added'); ['s-order','s-product','s-sku','s-price','s-cogs','s-city','s-state'].forEach(id=>document.getElementById(id).value=''); state.salesPage=1; loadSales(); }catch(e){}
+}
+async function delSale(id){ if(!confirm('Delete this order?'))return; try{ await api('/sales/'+id,{method:'DELETE'}); toast('Deleted'); loadSales(); }catch(e){} }
+
+// ---------- 7. EXPENSES ----------
+async function loadExpenses(){
+  const data=await api('/expenses?page='+state.expPage+'&size=25');
+  const tb=document.querySelector('#tblExpenses tbody');
+  const items=data.items||[];
+  tb.innerHTML=items.length? items.map(e=>`<tr>
+    <td>${fdate(e.date)}</td><td>${esc(e.description)}</td><td>${esc(e.category||'—')}</td>
+    <td class="num">${inr(e.amount)}</td><td>${esc(e.paymentMethod||'—')}</td><td><span class="badge gray">${esc(e.source||'manual')}</span></td>
+    <td><button class="btn danger sm" onclick="delExpense(${e.id})">✕</button></td></tr>`).join('') : emptyRow(7);
+  pager('pgExpenses', data, n=>{ state.expPage=n; loadExpenses(); });
+}
+async function addExpense(){
+  const body={date:val('e-date'),description:val('e-desc'),amount:numval('e-amt'),category:val('e-cat'),paymentMethod:val('e-pm')};
+  if(!body.amount){ toast('Amount is required','warn'); return; }
+  try{ await api('/expenses',{method:'POST',body:JSON.stringify(body)}); toast('Expense added'); ['e-desc','e-amt','e-cat','e-pm'].forEach(id=>document.getElementById(id).value=''); state.expPage=1; loadExpenses(); }catch(e){}
+}
+async function delExpense(id){ if(!confirm('Delete this expense?'))return; try{ await api('/expenses/'+id,{method:'DELETE'}); toast('Deleted'); loadExpenses(); }catch(e){} }
+
+// ---------- 8. ADS ----------
+async function loadAds(){
+  const data=await api('/ads?page='+state.adsPage+'&size=25');
+  const tb=document.querySelector('#tblAds tbody');
+  const items=data.items||[];
+  tb.innerHTML=items.length? items.map(a=>`<tr>
+    <td>${fdate(a.date)}</td><td>${esc(a.name)}</td><td>${esc(a.platform||'—')}</td>
+    <td class="num">${inr(a.spend)}</td><td class="num">${inr(a.revenue)}</td>
+    <td>${a.roas!=null?roasBadge(a.roas):'<span class="badge gray">n/a</span>'}</td>
+    <td class="num">${num(a.clicks)}</td><td class="num">${num(a.conversions)}</td><td>${esc(a.deliveryStatus||'—')}</td>
+    <td><button class="btn danger sm" onclick="delAd(${a.id})">✕</button></td></tr>`).join('') : emptyRow(10);
+  pager('pgAds', data, n=>{ state.adsPage=n; loadAds(); });
+}
+async function addAd(){
+  const body={date:val('a-date'),name:val('a-name'),platform:val('a-plat'),spend:numval('a-spend'),roas:numval('a-roas'),clicks:numval('a-clicks'),conversions:numval('a-conv')};
+  if(!body.name){ toast('Campaign name required','warn'); return; }
+  try{ await api('/ads',{method:'POST',body:JSON.stringify(body)}); toast('Campaign added'); ['a-name','a-spend','a-roas','a-clicks','a-conv'].forEach(id=>document.getElementById(id).value=''); state.adsPage=1; loadAds(); }catch(e){}
+}
+async function delAd(id){ if(!confirm('Delete this campaign?'))return; try{ await api('/ads/'+id,{method:'DELETE'}); toast('Deleted'); loadAds(); }catch(e){} }
+
+// ---------- 9. P&L ----------
+async function loadPnl(){
+  const [k, rows]=await Promise.all([api('/dashboard/kpis'), api('/analytics/pnl')]);
+  document.getElementById('pnlKpis').innerHTML=
+    kpi('Revenue', inr(k.totalRevenue),'','')+
+    kpi('Gross Profit', inr(k.grossProfit), pct(k.grossMargin)+' margin','green')+
+    kpi('Net Profit', inr(k.netProfit), pct(k.netMargin)+' margin', Number(k.netProfit)>=0?'green':'red')+
+    kpi('COGS', inr(k.cogs),'','red')+
+    kpi('Ad Spend', inr(k.adSpend),'','gold')+
+    kpi('Other Exp.', inr(k.otherExpenses),'','red');
+  const tb=document.querySelector('#tblPnl tbody');
+  tb.innerHTML=rows.length? rows.map(r=>`<tr>
+    <td>${esc(r.label)}</td><td class="num">${inr(r.revenue)}</td><td class="num">${inr(r.cogs)}</td>
+    <td class="num">${inr(r.grossProfit)}</td><td class="num">${inr(r.adSpend)}</td><td class="num">${inr(r.otherExpenses)}</td>
+    <td class="num" style="color:${Number(r.netProfit)>=0?'var(--green)':'var(--red)'}">${inr(r.netProfit)}</td>
+    <td class="num">${pct(r.margin)}</td></tr>`).join('') : emptyRow(8);
+}
+
+// ---------- 10. COSTS ----------
+async function loadCosts(){
+  const [costs, sales]=await Promise.all([api('/costs'), api('/sales?size=500&page=1')]);
+  const tb=document.querySelector('#tblCosts tbody');
+  tb.innerHTML=costs.length? costs.map(c=>`<tr>
+    <td>${esc(c.productName)}</td><td>${esc(c.sku||'—')}</td><td class="num">${inr(c.cost)}</td><td>${esc(c.notes||'')}</td>
+    <td><button class="btn danger sm" onclick="delCost(${c.id})">✕</button></td></tr>`).join('') : emptyRow(5);
+  // missing COGS alert
+  const missing={}; (sales.items||[]).forEach(o=>{ if(Number(o.cogsPerUnit)===0 && o.product){ missing[o.product]=(missing[o.product]||0)+1; } });
+  const keys=Object.keys(missing);
+  const el=document.getElementById('cogsAlert');
+  el.innerHTML = keys.length? `<div class="alert warn"><b>⚠ ${keys.length} product(s) missing COGS.</b> Profit is understated until you add costs and apply them. e.g. ${keys.slice(0,4).map(esc).join(', ')}${keys.length>4?'…':''}</div>` : `<div class="alert info">✓ All products with orders have a cost assigned.</div>`;
+}
+async function addCost(){
+  const body={productName:val('c-name'),sku:val('c-sku'),cost:numval('c-cost'),notes:val('c-notes')};
+  if(!body.productName){ toast('Product name required','warn'); return; }
+  try{ await api('/costs',{method:'POST',body:JSON.stringify(body)}); toast('Cost saved'); ['c-name','c-sku','c-cost','c-notes'].forEach(id=>document.getElementById(id).value=''); loadCosts(); }catch(e){}
+}
+async function delCost(id){ if(!confirm('Delete this cost?'))return; try{ await api('/costs/'+id,{method:'DELETE'}); toast('Deleted'); loadCosts(); }catch(e){} }
+async function applyCosts(){ try{ const r=await api('/costs/apply',{method:'POST'}); toast('Applied to '+(r.applied||0)+' orders'); loadCosts(); }catch(e){} }
+function downloadTemplate(){
+  const csv='Product Name,SKU,Cost\nClear Case iPhone 15,CC-IP15,120\nLeather Wallet Case,LW-001,340\n';
+  const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='product_cost_template.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+// ---------- 12. PROFILE ----------
+async function loadProfile(){
+  const p=await api('/profile');
+  setval('p-name',p.businessName); setval('p-gstin',p.gstin); setval('p-fy',p.financialYear); setval('p-ca',p.caName);
+}
+async function saveProfile(){
+  const body={businessName:val('p-name'),gstin:val('p-gstin'),financialYear:val('p-fy'),caName:val('p-ca')};
+  try{ await api('/profile',{method:'PUT',body:JSON.stringify(body)}); toast('Profile saved'); }catch(e){}
+}
+
+// ---------- pager ----------
+function pager(elId, data, onGo){
+  const el=document.getElementById(elId); if(!el) return;
+  const page=data.page||1, tp=data.totalPages||1, total=data.total||0;
+  if(total===0){ el.innerHTML=''; return; }
+  el.innerHTML=`<span class="muted">${total} total · page ${page}/${tp}</span>
+    <button class="btn sm ghost" ${page<=1?'disabled':''} onclick="(${onGo})(${page-1})">‹ Prev</button>
+    <button class="btn sm ghost" ${page>=tp?'disabled':''} onclick="(${onGo})(${page+1})">Next ›</button>`;
+}
+
+// ---------- input helpers ----------
+function val(id){ const e=document.getElementById(id); return e? e.value.trim():''; }
+function numval(id){ const v=val(id); return v===''? null : Number(v); }
+function setval(id,v){ const e=document.getElementById(id); if(e) e.value=v==null?'':v; }
+
+// ---------- init ----------
+document.getElementById('nav').addEventListener('click', e=>{ const a=e.target.closest('a'); if(a&&a.dataset.page){ go(a.dataset.page); } });
+document.addEventListener('click', e=>{ const a=e.target.closest('.navlink'); if(a&&a.dataset.page){ go(a.dataset.page); } });
+document.addEventListener('keydown', e=>{ if(e.key==='Enter' && document.getElementById('auth').style.display!=='none'){ if(!document.getElementById('loginForm').classList.contains('hidden')) doLogin(); else doRegister(); } });
+['shopify','meta','shipping','costs'].forEach(wireDrop);
+
+if(token()){ enterApp(); } else { document.getElementById('auth').style.display='flex'; }
+</script>
+</body>
+</html>
